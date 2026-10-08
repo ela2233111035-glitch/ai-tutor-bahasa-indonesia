@@ -41,28 +41,19 @@ YOUTUBE_ICE_BREAKING_URL = "https://youtu.be/A1HUh8FMCpE"
 
 
 # =========================================================
-# KONFIGURASI OPENAI
+# KONFIGURASI GEMINI API
 # =========================================================
+# API key disimpan aman di Streamlit Secrets, BUKAN di GitHub.
+# Format Secrets:
+# GEMINI_API_KEY = "API_KEY_GEMINI_ANDA"
 #
-# Jika ingin menggunakan AI:
-#
-# Windows CMD:
-#
-# set OPENAI_API_KEY=API_KEY_ANDA
-#
-# atau gunakan .streamlit/secrets.toml:
-#
-# OPENAI_API_KEY = "API_KEY_ANDA"
-#
-# Model dapat diubah melalui:
-#
-# OPENAI_MODEL=gpt-4o-mini
-#
+# Model yang digunakan: Gemini 3.8 Flash (memiliki Free Tier
+# menurut dokumentasi harga Gemini API saat ini).
 # =========================================================
 
-OPENAI_MODEL = os.getenv(
-    "OPENAI_MODEL",
-    "gpt-4o-mini"
+GEMINI_MODEL = os.getenv(
+    "GEMINI_MODEL",
+    "gemini-3.8-flash"
 )
 
 
@@ -310,9 +301,7 @@ DEFAULT_STATE = {
     "skor_evaluasi": None,
     "jawaban_evaluasi": {},
     "game_soal": None,
-    "riwayat_ai": [],
-    "openai_api_key_input": "",
-    "ai_last_error": ""
+    "riwayat_ai": []
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -840,127 +829,84 @@ def buat_context_ai(
 
 
 # =========================================================
-# OPENAI API KEY
+# GEMINI API KEY
 # =========================================================
 
-def ambil_api_key():
+def ambil_gemini_api_key():
 
-    # 1. Streamlit Secrets — paling disarankan untuk deployment.
     try:
-        key = st.secrets.get("OPENAI_API_KEY", "")
-        if key:
-            return str(key).strip()
+        if "GEMINI_API_KEY" in st.secrets:
+            return str(st.secrets["GEMINI_API_KEY"]).strip()
     except Exception:
         pass
 
-    # 2. Environment variable — berguna untuk lokal / server.
-    key = os.getenv("OPENAI_API_KEY", "")
-    if key:
-        return key.strip()
-
-    # 3. Input sementara dari sidebar — tidak ditulis ke source code.
-    key = st.session_state.get("openai_api_key_input", "")
-    return str(key).strip() if key else ""
+    return os.getenv("GEMINI_API_KEY", "").strip()
 
 
 # =========================================================
-# CEK OPENAI
+# CEK GEMINI
 # =========================================================
 
-def openai_tersedia():
+def gemini_tersedia():
 
-    api_key = ambil_api_key()
+    api_key = ambil_gemini_api_key()
 
     if not api_key:
-
         return False
 
     try:
-
-        import openai
-
+        from google import genai
         return True
-
     except ImportError:
-
         return False
 
 
 # =========================================================
-# BUAT JAWABAN AI
+# BUAT JAWABAN AI DENGAN GEMINI
 # =========================================================
 
-def buat_jawaban_ai(
-    pertanyaan,
-    context
-):
+def buat_jawaban_ai(pertanyaan, context):
 
-    api_key = ambil_api_key()
+    api_key = ambil_gemini_api_key()
 
     if not api_key:
-
         return None, (
-            "OPENAI_API_KEY belum diatur."
+            "GEMINI_API_KEY belum diatur di Streamlit Secrets."
         )
 
     try:
+        from google import genai
+        from google.genai import types
 
-        from openai import OpenAI
-
-        client = OpenAI(
-            api_key=api_key
-        )
+        client = genai.Client(api_key=api_key)
 
         instruksi = """
-Anda adalah AI Tutor Bahasa Indonesia.
+Anda adalah NARA, AI Tutor Bahasa Indonesia untuk peserta didik.
 
-Tugas Anda adalah menjawab pertanyaan peserta
-didik SECARA TEPAT sesuai dengan pertanyaan.
+Tugas Anda adalah menjawab pertanyaan peserta didik SECARA TEPAT sesuai pertanyaan.
 
 Gunakan materi Knowledge Base sebagai sumber utama.
 
 ATURAN:
-
-1. Pahami terlebih dahulu maksud pertanyaan.
+1. Pahami maksud pertanyaan terlebih dahulu.
 2. Jawaban harus langsung menjawab pertanyaan.
 3. Jangan menjawab topik lain.
 4. Jangan memasukkan informasi yang tidak berkaitan.
-5. Gunakan Knowledge Base sebagai sumber utama.
-6. Jika informasi tersedia di Knowledge Base,
-   gunakan informasi tersebut.
-7. Jika beberapa bagian materi relevan,
-   gabungkan informasi tersebut.
-8. Jika pertanyaan meminta "sebutkan",
-   gunakan daftar bernomor atau bullet.
-9. Jika pertanyaan meminta "jelaskan",
-   berikan penjelasan yang cukup.
-10. Jika pertanyaan meminta "apa pengertian",
-    berikan definisi terlebih dahulu.
-11. Jika pertanyaan meminta "fungsi",
-    fokus pada fungsi.
-12. Jika pertanyaan meminta "struktur",
-    fokus pada struktur.
-13. Jika pertanyaan meminta "ciri-ciri",
-    fokus pada ciri-ciri.
-14. Jika pertanyaan meminta "contoh",
-    berikan contoh yang relevan.
-15. Jangan mengulang pertanyaan pengguna.
-16. Gunakan Bahasa Indonesia yang mudah dipahami.
-17. Jangan menyebut "database internal".
-18. Jangan mengatakan "berdasarkan sumber di atas"
-    secara berulang.
-19. Jika jawaban tidak tersedia dalam materi,
-    katakan:
-    "Maaf, informasi tersebut belum ditemukan
-    dalam materi yang tersedia."
-20. Jangan mengarang fakta yang tidak terdapat
-    dalam materi.
+5. Jika informasi tersedia di Knowledge Base, gunakan informasi tersebut.
+6. Jika beberapa bagian materi relevan, gabungkan informasi tersebut.
+7. Jika pertanyaan meminta "sebutkan", gunakan daftar bernomor atau bullet.
+8. Jika pertanyaan meminta "jelaskan", berikan penjelasan yang cukup.
+9. Jika pertanyaan meminta pengertian, berikan definisi terlebih dahulu.
+10. Jika pertanyaan meminta fungsi, fokus pada fungsi.
+11. Jika pertanyaan meminta struktur, fokus pada struktur.
+12. Jika pertanyaan meminta ciri-ciri, fokus pada ciri-ciri.
+13. Jika pertanyaan meminta contoh, berikan contoh yang relevan dari materi bila tersedia.
+14. Gunakan Bahasa Indonesia yang mudah dipahami peserta didik.
+15. Jangan menyebut "database internal".
+16. Jangan mengarang fakta yang tidak didukung materi.
+17. Jika informasi tidak tersedia dalam materi, katakan: "Maaf, informasi tersebut belum ditemukan dalam materi yang tersedia."
 
 FORMAT:
-
-Jawab langsung.
-
-Gunakan:
 - paragraf untuk penjelasan;
 - bullet point untuk daftar;
 - nomor untuk langkah atau urutan;
@@ -969,43 +915,32 @@ Gunakan:
 
         prompt = f"""
 PERTANYAAN PESERTA DIDIK:
-
 {pertanyaan}
 
-KNOWLEDGE BASE:
+KNOWLEDGE BASE MATERI:
+{context if context else "Tidak ada materi yang relevan ditemukan."}
 
-{context if context else "Tidak ada potongan materi yang cocok ditemukan. Jangan mengarang isi materi."}
-
-INSTRUKSI:
-
-Jawab pertanyaan peserta didik secara langsung.
-Jika materi di atas memuat jawabannya, prioritaskan materi tersebut.
-Jika materi tidak memuat jawabannya, jelaskan dengan jujur bahwa
-informasi itu belum tersedia dalam materi Teks Prosedur yang diberikan.
-Jangan mengarang seolah-olah informasi tersebut ada di materi.
+Jawab pertanyaan peserta didik secara langsung dan sesuai materi.
 """
 
-        response = client.responses.create(
-            model=OPENAI_MODEL,
-            instructions=instruksi,
-            input=prompt
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=instruksi,
+                temperature=0.4,
+                max_output_tokens=900,
+            )
         )
 
-        jawaban = response.output_text
+        jawaban = getattr(response, "text", None)
 
         if not jawaban:
+            return None, "Gemini tidak memberikan jawaban."
 
-            return None, (
-                "AI tidak memberikan jawaban."
-            )
-
-        return (
-            jawaban.strip(),
-            None
-        )
+        return jawaban.strip(), None
 
     except Exception as error:
-
         return None, str(error)
 
 
@@ -1831,21 +1766,6 @@ with st.sidebar:
     st.markdown('<div style="text-align:center;padding:8px 0 18px"><div style="font-size:3.3rem">📚</div><div style="font-family:Baloo 2;font-size:1.5rem;font-weight:900">AI TUTOR</div><div style="color:#64748b;font-size:.82rem">Bahasa Indonesia • Ultimate 2.0</div></div>',unsafe_allow_html=True)
     st.session_state.nama_pelajar=st.text_input("👤 Nama Pelajar",value=st.session_state.nama_pelajar,placeholder="Masukkan nama")
     st.session_state.kelas=st.text_input("🏫 Kelas",value=st.session_state.kelas,placeholder="Contoh: VIII A")
-
-    # Kunci API dapat diambil dari st.secrets / environment variable.
-    # Jika belum tersedia, pengguna juga dapat memasukkannya sementara di sini.
-    if not ambil_api_key():
-        st.session_state.openai_api_key_input = st.text_input(
-            "🔑 OpenAI API Key (opsional)",
-            value=st.session_state.openai_api_key_input,
-            type="password",
-            help="Untuk AI sungguhan, masukkan API key OpenAI atau isi OPENAI_API_KEY di Streamlit Secrets."
-        )
-        if not ambil_api_key():
-            st.caption("💡 Tanpa API key, NARA tetap mencoba menjawab dari materi yang ada.")
-    else:
-        st.success("🤖 AI terhubung", icon="✅")
-
     st.markdown(f'<div class="card" style="padding:16px;margin:8px 0 18px"><div style="font-weight:900">{level_name}</div><div class="xpbar"><div class="xpfill" style="width:{pct}%"></div></div><div style="font-size:.78rem;color:#526078">{st.session_state.xp} XP</div></div>',unsafe_allow_html=True)
     pages=[("🏠","Beranda"),("🌱","Profil Pelajar Pancasila"),("🗺️","CP dan ATP"),("🤖","AI Tutor"),("🎉","Ice Breaking"),("📚","Materi"),("🎮","Games"),("📝","LKPD"),("⚔️","Evaluasi"),("🏆","Achievement")]
     for icon,label in pages:
@@ -1854,6 +1774,7 @@ with st.sidebar:
             st.rerun()
     st.markdown("---")
     st.caption("✨ Belajar • Bermain • Bertumbuh")
+    st.caption("🤖 AI: Gemini Free Tier")
 
 # ---------- Main Hero ----------
 st.markdown(f'<div class="hero"><div class="hero-title">AI TUTOR<br>BAHASA INDONESIA</div><div class="hero-sub">Platform belajar interaktif untuk membaca, memahami, berlatih, bertanya kepada AI, dan menaklukkan tantangan Bahasa Indonesia.</div><div class="badges"><span class="badge">🚀 Ultimate 2.0</span><span class="badge">🤖 AI Learning</span><span class="badge">🎮 Gamified</span><span class="badge">🏆 Achievement</span></div></div>',unsafe_allow_html=True)
@@ -1937,66 +1858,31 @@ elif st.session_state.halaman=="AI Tutor":
             if st.button(q,key=f"quick_{i}",use_container_width=True):
                 st.session_state["ai_input"]=q;st.rerun()
     with b:
-        if ambil_api_key():
-            st.success("🟢 NARA siap menerima pertanyaan dan meminta jawaban dari OpenAI + materi yang kamu punya.")
-        else:
-            st.warning("🟡 API key belum tersedia. NARA masih dapat mencoba menjawab dari materi yang tersimpan, tetapi untuk kemampuan AI penuh isi OPENAI_API_KEY di Secrets atau masukkan key di sidebar.")
         q=st.text_area("💭 Tulis pertanyaanmu",value=st.session_state.get("ai_input",""),height=120,placeholder="Contoh: Jelaskan struktur teks prosedur dengan bahasa sederhana...")
         c1,c2=st.columns(2)
         ask=c1.button("✨ Tanya NARA",use_container_width=True)
         if c2.button("🧹 Bersihkan",use_container_width=True):
             st.session_state["ai_input"]="";st.rerun()
+        if gemini_tersedia():
+            st.success("🟢 NARA terhubung ke Gemini AI — Free Tier")
+        else:
+            st.warning("🟡 Gemini belum terhubung. Tambahkan GEMINI_API_KEY di Streamlit Secrets.")
+
         if ask and q.strip():
-            pertanyaan = q.strip()
-            st.session_state.ai_questions += 1
-            award_xp(15, "AI Tutor")
-
-            # PERBAIKAN PENTING:
-            # cari materi relevan terlebih dahulu, lalu kirim hasilnya
-            # ke buat_context_ai(). Sebelumnya fungsi dipanggil tanpa
-            # argumen hasil sehingga AI gagal sebelum request dikirim.
-            hasil_relevan = cari_materi_relevan(
-                pertanyaan,
-                chunks_database,
-                jumlah=8
-            )
-            context = buat_context_ai(hasil_relevan)
-
-            answer, error = buat_jawaban_ai(
-                pertanyaan,
-                context
-            )
-
-            # Jika API belum dikonfigurasi atau sedang gagal, tetap berikan
-            # jawaban dari materi yang sudah diunggah agar aplikasi tidak
-            # hanya menampilkan pesan error.
+            st.session_state.ai_questions+=1
+            award_xp(15,"AI Tutor")
+            hasil_relevan=cari_materi_relevan(q.strip(),chunks_database,jumlah=8)
+            context=buat_context_ai(hasil_relevan)
+            answer,error=buat_jawaban_ai(q.strip(),context)
             if not answer:
-                answer = jawaban_dari_database(
-                    pertanyaan,
-                    hasil_relevan
-                )
+                answer=jawaban_dari_database(q.strip(),hasil_relevan)
                 if error:
-                    st.session_state["ai_last_error"] = error
-
-            st.session_state.riwayat_ai.append({
-                "q": pertanyaan,
-                "a": answer
-            })
-            st.session_state["ai_input"] = ""
-            badge_check()
-            st.rerun()
-
-        # Riwayat percakapan menggunakan komponen chat Streamlit agar
-        # jawaban Markdown dari AI tampil rapi dan mudah dibaca.
-        for item in st.session_state.riwayat_ai[-8:]:
-            with st.chat_message("user", avatar="👤"):
-                st.markdown(item["q"])
-            with st.chat_message("assistant", avatar="🤖"):
-                st.markdown(item["a"])
-
-        if st.session_state.get("ai_last_error"):
-            with st.expander("ℹ️ Detail koneksi AI", expanded=False):
-                st.caption(st.session_state["ai_last_error"])
+                    st.session_state["ai_last_error"]=error
+            st.session_state.riwayat_ai.append({"q":q.strip(),"a":answer})
+            st.session_state["ai_input"]="";badge_check();st.rerun()
+        for item in reversed(st.session_state.riwayat_ai[-6:]):
+            st.markdown(f'<div class="chat-user"><b>👤 Kamu</b><br>{item["q"]}</div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="chat-ai"><b>🤖 NARA</b><br>{item["a"]}</div>',unsafe_allow_html=True)
 
 # ---------- ICE BREAKING ----------
 elif st.session_state.halaman=="Ice Breaking":
