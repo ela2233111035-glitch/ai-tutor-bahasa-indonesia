@@ -1,10 +1,12 @@
 import os
 import re
 import random
+import base64
 from collections import Counter
 from difflib import SequenceMatcher
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 # =========================================================
@@ -38,6 +40,13 @@ LKPD_URL = "https://forms.gle/ZrQU4CSB46PJNT9Z6"
 # Video Ice Breaking
 # URL video dapat diganti kapan saja tanpa mengubah bagian lain program.
 YOUTUBE_ICE_BREAKING_URL = "https://youtu.be/A1HUh8FMCpE"
+
+# File panduan PDF. Upload file ini ke root repository GitHub agar
+# tombol unduh dan pratinjau PDF dapat digunakan.
+PANDUAN_PDF = "Panduan Penggunaan AI.pdf"
+
+# Link Google Drive untuk Panduan Penggunaan AI
+PANDUAN_URL = "https://drive.google.com/drive/folders/1UP-ULHR6tTY7a1-6DlpTqVUS2y5Jjz67"
 
 
 # =========================================================
@@ -323,6 +332,7 @@ MENU = [
     "Ice Breaking",
     "Materi",
     "Games",
+    "Panduan Penggunaan",
     "LKPD",
     "Evaluasi"
 ]
@@ -1767,7 +1777,19 @@ with st.sidebar:
     st.session_state.nama_pelajar=st.text_input("👤 Nama Pelajar",value=st.session_state.nama_pelajar,placeholder="Masukkan nama")
     st.session_state.kelas=st.text_input("🏫 Kelas",value=st.session_state.kelas,placeholder="Contoh: VIII A")
     st.markdown(f'<div class="card" style="padding:16px;margin:8px 0 18px"><div style="font-weight:900">{level_name}</div><div class="xpbar"><div class="xpfill" style="width:{pct}%"></div></div><div style="font-size:.78rem;color:#526078">{st.session_state.xp} XP</div></div>',unsafe_allow_html=True)
-    pages=[("🏠","Beranda"),("🌱","Profil Pelajar Pancasila"),("🗺️","CP dan ATP"),("🤖","AI Tutor"),("🎉","Ice Breaking"),("📚","Materi"),("🎮","Games"),("📝","LKPD"),("⚔️","Evaluasi"),("🏆","Achievement")]
+    pages=[
+        ("🏠","Beranda"),
+        ("🌱","Profil Pelajar Pancasila"),
+        ("🗺️","CP dan ATP"),
+        ("🤖","AI Tutor"),
+        ("🎉","Ice Breaking"),
+        ("📚","Materi"),
+        ("🎮","Games"),
+        ("📖","Panduan Penggunaan"),
+        ("📝","LKPD"),
+        ("⚔️","Evaluasi"),
+        ("🏆","Achievement")
+    ]
     for icon,label in pages:
         if st.button(f"{icon}  {label}",key=f"nav_{label}",use_container_width=True):
             st.session_state.halaman=label
@@ -1795,7 +1817,7 @@ if st.session_state.halaman=="Beranda":
         if i<len(journey)-1:
             with cols[i*2+1]: st.markdown('<div class="arrow">➜</div>',unsafe_allow_html=True)
     st.markdown('<div class="section">🎯 Aktivitas Utama</div>',unsafe_allow_html=True)
-    features=[("🤖","AI Tutor","Tanyakan materi dan dapatkan penjelasan mudah.","AI Tutor"),("📚","Materi","Jelajahi materi Bahasa Indonesia.","Materi"),("🎮","Game Zone","Berlatih sambil mengumpulkan XP.","Games"),("📝","LKPD","Kerjakan misi belajar.","LKPD"),("⚔️","Challenge","Uji pemahamanmu seperti game.","Evaluasi"),("🌱","Profil Pancasila","Kembangkan karakter belajar.","Profil Pelajar Pancasila")]
+    features=[("🤖","AI Tutor","Tanyakan materi dan dapatkan penjelasan mudah.","AI Tutor"),("📚","Materi","Jelajahi materi Bahasa Indonesia.","Materi"),("🎮","Game Zone","Berlatih sambil mengumpulkan XP.","Games"),("📖","Panduan","Pelajari langkah penggunaan AI Tutor dari awal sampai evaluasi.","Panduan Penggunaan"),("📝","LKPD","Kerjakan misi belajar.","LKPD"),("⚔️","Challenge","Uji pemahamanmu seperti game.","Evaluasi"),("🌱","Profil Pancasila","Kembangkan karakter belajar.","Profil Pelajar Pancasila")]
     cols=st.columns(3)
     for i,(ico,title,desc,target) in enumerate(features):
         with cols[i%3]:
@@ -2129,6 +2151,184 @@ elif st.session_state.halaman=="Games":
     if st.button("♻️ Reset Progress Game",use_container_width=True):
         st.session_state.procedure_score=0; st.session_state.procedure_lives=3; st.session_state.procedure_round=0; st.session_state.procedure_completed=[]; st.rerun()
 
+# ---------- PANDUAN PENGGUNAAN ----------
+elif st.session_state.halaman=="Panduan Penggunaan":
+    page_header(
+        "Panduan Penggunaan",
+        "Panduan langkah demi langkah untuk menggunakan AI Tutor Bahasa Indonesia.",
+        "📖"
+    )
+
+    st.markdown(
+        """
+        <div style="
+            background:linear-gradient(135deg,#eff6ff,#fff7ed);
+            border:3px solid #2563eb;
+            border-radius:22px;
+            padding:28px;
+            text-align:center;
+            margin-bottom:22px;
+        ">
+            <div style="font-size:52px;">📖</div>
+            <div style="
+                font-size:30px;
+                font-weight:900;
+                color:#1e3a8a;
+                margin:8px 0 12px;
+            ">
+                PANDUAN PENGGUNAAN
+            </div>
+            <div style="font-size:17px;color:#334155;">
+                Panduan lengkap penggunaan AI Tutor Bahasa Indonesia.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown("### 🔗 Panduan Google Drive")
+    st.write("Klik tombol di bawah untuk membuka panduan penggunaan.")
+
+    st.link_button(
+        "📖 BUKA PANDUAN PENGGUNAAN DI GOOGLE DRIVE",
+        PANDUAN_URL,
+        use_container_width=True
+    )
+
+    st.success("✅ Tombol di atas dapat diklik untuk membuka Panduan Penggunaan di Google Drive.")
+
+    panduan = [
+        ("1", "🌐 Membuka Link", [
+            "Siapkan Laptop, komputer, tablet, atau telepon genggam.",
+            "Buka Google Choreme atau browser lainnya.",
+            "Masukkan Link Al Tutor Bahasa Indonesia yang diberikan guru.",
+            "Tekan Enter dan tunggu sampai halaman terbuka.",
+        ]),
+        ("2", "👤 Nama Pelajar dan Kelas", [
+            "Masukkan nama lengkap pada kolom Nama Pelajar.",
+            "Masukkan kelas pada kolom Kelas.",
+            "Periksa kembali data yang ditulis.",
+            "Lanjutkan ke halaman berikutnya.",
+        ]),
+        ("3", "🏠 Beranda", [
+            "Masuk ke menu Beranda.",
+            "Perhatikan tampilan dan informasi yang tersedia.",
+            "Kenali menu-menu pembelajaran yang terdapat pada bagian samping.",
+        ]),
+        ("4", "🌱 Profil Pelajar Pancasila", [
+            "Klik menu Profil Pelajar Pancasila.",
+            "Baca informasi yang tersedia.",
+            "Pahami nilai atau karakter yang ditampilkan.",
+            "Terapkan sikap tersebut selama mengikuti pembelajaran.",
+        ]),
+        ("5", "🗺️ CP dan ATP", [
+            "Klik menu CP dan ATP.",
+            "Baca Capaian Pembelajaran (CP).",
+            "Baca Alur Tujuan Pembelajaran (ATP).",
+            "Pahami kemampuan yang diharapkan setelah pembelajaran.",
+        ]),
+        ("6", "🤖 AI Tutor", [
+            "Klik menu AI Tutor.",
+            "Baca petunjuk penggunaan.",
+            "Ketik pertanyaan yang ingin kamu tanyakan yang berkaitan dengan materi Teks Prosedur.",
+            "Setelah itu, klik “Tanya Nara”.",
+            "Kemudian akan muncul jawaban yang kamu inginkan.",
+            "Jika kamu ingin memberi pertanyaan lainnya, klik “Bersihkan” dan kamu bisa mengajukan pertanyaan lainnya.",
+        ]),
+        ("7", "🎉 Ice Breaking", [
+            "Klik menu ice breaking pada kolom beranda AI Tutor.",
+            "Baca petunjuk yang tersedia.",
+            "Ikuti kegiatan sesuai arahan.",
+            "Akan muncul tampilan seperti gambar di samping.",
+            "Kamu dapat mengakses kegiatan ice breaking melalui video YouTube yang telah disediakan, yaitu “Video Senam Otak”.",
+            "Selanjutnya, kamu juga dapat memilih dan melakukan kegiatan ice breaking melalui salah satu menu yang tersedia sesuai dengan keinginanmu.",
+            "Lakukan dengan semangat dan percaya diri.",
+        ]),
+        ("8", "📚 Materi", [
+            "Klik menu Materi.",
+            "Pilih materi Teks Prosedur yang kamu inginkan.",
+            "Baca materi dengan teliti.",
+            "Perhatikan materi teks prosedur yang tersedia.",
+            "Catat bagian yang penting.",
+            "Tanyakan kepada AI Tutor jika ada materi yang belum dipahami.",
+        ]),
+        ("9", "🎮 Games", [
+            "Klik menu ‘Games’.",
+            "Kemudian, akan muncul tampilan gambar seperti disamping dan klik ‘Main Wordwall’.",
+            "Tunggu hingga permainan Wordwall terbuka.",
+            "Baca petunjuk permainan.",
+            "Pilih bentuk permainan yang tersedia pada templat.",
+            "Kerjakan setiap tantangan.",
+            "Perhatikan hasil atau skor yang kamu peroleh.",
+        ]),
+        ("10", "📝 LKPD", [
+            "Klik menu LKPD.",
+            "Kemudian, klik “Buka LKPD & Dapatkan XP”.",
+            "Maka akan muncul tampilan “Kerjakan Sekarang”.",
+            "Klik “Kerjakan Sekarang”.",
+            "Setelah itu, pengguna akan diarahkan ke tampilan Google Form.",
+            "Baca petunjuk pengerjaan.",
+            "Baca setiap soal dengan teliti.",
+            "Kerjakan berdasarkan materi yang telah dipelajari.",
+            "Periksa kembali jawaban.",
+            "Kirim jawaban sesuai petunjuk guru.",
+        ]),
+        ("11", "⚔️ Evaluasi", [
+            "Klik menu Evaluasi.",
+            "Baca petunjuk pengerjaan.",
+            "Kerjakan soal dengan teliti dan mandiri.",
+            "Setelah selesai, periksa kembali jawabanmu.",
+            "Kemudian klik “Kirim/Submit Challenge”.",
+            "Setelah itu, akan muncul hasil atau nilai yang kamu peroleh.",
+        ]),
+    ]
+
+    for nomor, judul, langkah in panduan:
+        st.markdown(f'<div class="section">{judul}</div>', unsafe_allow_html=True)
+        items = "".join(f'<li style="margin:8px 0;color:#172033">{item}</li>' for item in langkah)
+        st.markdown(
+            f"""<div class="card" style="border-left:7px solid #7c3aed">
+                <div style="display:flex;gap:14px;align-items:flex-start">
+                    <div style="min-width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#db2777);color:white;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:900">{nomor}</div>
+                    <div style="flex:1"><ol style="margin:0;padding-left:22px">{items}</ol></div>
+                </div>
+            </div>""",
+            unsafe_allow_html=True
+        )
+
+    st.markdown('<div class="section">📄 Dokumen Panduan Asli</div>', unsafe_allow_html=True)
+    if False and os.path.exists(PANDUAN_PDF):
+        with open(PANDUAN_PDF, "rb") as pdf_file:
+            pdf_bytes = pdf_file.read()
+        st.download_button(
+            "⬇️ Unduh Panduan PDF",
+            data=pdf_bytes,
+            file_name=os.path.basename(PANDUAN_PDF),
+            mime="application/pdf",
+            use_container_width=True,
+        )
+        pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
+        components.html(
+            f"""<div style="width:100%;height:760px;border:2px solid #dbe2ee;border-radius:18px;overflow:hidden;background:white">
+                <iframe src="data:application/pdf;base64,{pdf_b64}" width="100%" height="100%" style="border:0"></iframe>
+            </div>""",
+            height=780,
+            scrolling=False,
+        )
+    else:
+        st.warning(
+            f"File PDF belum ditemukan di repository. Upload file '{PANDUAN_PDF}' ke folder utama GitHub agar tombol unduh dan pratinjau PDF muncul."
+        )
+
+    st.markdown(
+        """<div class="feature" style="margin-top:20px;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border:2px solid #86efac">
+            <div class="emoji">💡</div>
+            <h3>Gunakan Panduan Ini Saat Belajar</h3>
+            <p>Jika kamu lupa cara menggunakan salah satu menu, kembali ke <b>Panduan Penggunaan AI</b> ini lalu ikuti langkah yang sesuai.</p>
+        </div>""",
+        unsafe_allow_html=True
+    )
+
 # ---------- LKPD ----------
 elif st.session_state.halaman=="LKPD":
     page_header("Learning Mission","Kerjakan LKPD sebagai bagian dari misi belajarmu.","📝")
@@ -2172,4 +2372,4 @@ elif st.session_state.halaman=="Achievement":
         with cols[i%3]:
             st.markdown(f'<div class="badge-card {" " if unlocked else "badge-locked"}"><div class="medal">{ico}</div><h3>{title}</h3><p style="color:#526078">{desc}</p><b>{"UNLOCKED ✨" if unlocked else "LOCKED 🔒"}</b></div>',unsafe_allow_html=True)
 
-st.markdown('<div class="footer"><div style="font-size:1.7rem">📚 🤖 🎮 🏆</div><b>AI Tutor Bahasa Indonesia • Ultimate 2.0</b><br><span>Belajar dengan rasa ingin tahu. Bertumbuh dengan tantangan.</span></div>',unsafe_allow_html=True)
+st.markdown('<div class="footer"><div style="font-size:1.7rem">📚 🤖 🎮 📖 🏆</div><b>AI Tutor Bahasa Indonesia • Ultimate 2.0</b><br><span>Belajar dengan rasa ingin tahu. Bertumbuh dengan tantangan.</span></div>',unsafe_allow_html=True)
