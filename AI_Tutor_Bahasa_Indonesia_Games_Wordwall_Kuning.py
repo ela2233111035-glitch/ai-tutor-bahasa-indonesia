@@ -310,7 +310,9 @@ DEFAULT_STATE = {
     "skor_evaluasi": None,
     "jawaban_evaluasi": {},
     "game_soal": None,
-    "riwayat_ai": []
+    "riwayat_ai": [],
+    "openai_api_key_input": "",
+    "ai_last_error": ""
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -843,22 +845,22 @@ def buat_context_ai(
 
 def ambil_api_key():
 
+    # 1. Streamlit Secrets — paling disarankan untuk deployment.
     try:
-
-        if "OPENAI_API_KEY" in st.secrets:
-
-            return st.secrets[
-                "OPENAI_API_KEY"
-            ]
-
+        key = st.secrets.get("OPENAI_API_KEY", "")
+        if key:
+            return str(key).strip()
     except Exception:
-
         pass
 
-    return os.getenv(
-        "OPENAI_API_KEY",
-        ""
-    )
+    # 2. Environment variable — berguna untuk lokal / server.
+    key = os.getenv("OPENAI_API_KEY", "")
+    if key:
+        return key.strip()
+
+    # 3. Input sementara dari sidebar — tidak ditulis ke source code.
+    key = st.session_state.get("openai_api_key_input", "")
+    return str(key).strip() if key else ""
 
 
 # =========================================================
@@ -972,14 +974,15 @@ PERTANYAAN PESERTA DIDIK:
 
 KNOWLEDGE BASE:
 
-{context}
+{context if context else "Tidak ada potongan materi yang cocok ditemukan. Jangan mengarang isi materi."}
 
 INSTRUKSI:
 
-Jawab hanya pertanyaan peserta didik.
-
-Pastikan jawaban benar-benar sesuai
-dengan maksud pertanyaan.
+Jawab pertanyaan peserta didik secara langsung.
+Jika materi di atas memuat jawabannya, prioritaskan materi tersebut.
+Jika materi tidak memuat jawabannya, jelaskan dengan jujur bahwa
+informasi itu belum tersedia dalam materi Teks Prosedur yang diberikan.
+Jangan mengarang seolah-olah informasi tersebut ada di materi.
 """
 
         response = client.responses.create(
@@ -1828,6 +1831,21 @@ with st.sidebar:
     st.markdown('<div style="text-align:center;padding:8px 0 18px"><div style="font-size:3.3rem">📚</div><div style="font-family:Baloo 2;font-size:1.5rem;font-weight:900">AI TUTOR</div><div style="color:#64748b;font-size:.82rem">Bahasa Indonesia • Ultimate 2.0</div></div>',unsafe_allow_html=True)
     st.session_state.nama_pelajar=st.text_input("👤 Nama Pelajar",value=st.session_state.nama_pelajar,placeholder="Masukkan nama")
     st.session_state.kelas=st.text_input("🏫 Kelas",value=st.session_state.kelas,placeholder="Contoh: VIII A")
+
+    # Kunci API dapat diambil dari st.secrets / environment variable.
+    # Jika belum tersedia, pengguna juga dapat memasukkannya sementara di sini.
+    if not ambil_api_key():
+        st.session_state.openai_api_key_input = st.text_input(
+            "🔑 OpenAI API Key (opsional)",
+            value=st.session_state.openai_api_key_input,
+            type="password",
+            help="Untuk AI sungguhan, masukkan API key OpenAI atau isi OPENAI_API_KEY di Streamlit Secrets."
+        )
+        if not ambil_api_key():
+            st.caption("💡 Tanpa API key, NARA tetap mencoba menjawab dari materi yang ada.")
+    else:
+        st.success("🤖 AI terhubung", icon="✅")
+
     st.markdown(f'<div class="card" style="padding:16px;margin:8px 0 18px"><div style="font-weight:900">{level_name}</div><div class="xpbar"><div class="xpfill" style="width:{pct}%"></div></div><div style="font-size:.78rem;color:#526078">{st.session_state.xp} XP</div></div>',unsafe_allow_html=True)
     pages=[("🏠","Beranda"),("🌱","Profil Pelajar Pancasila"),("🗺️","CP dan ATP"),("🤖","AI Tutor"),("🎉","Ice Breaking"),("📚","Materi"),("🎮","Games"),("📝","LKPD"),("⚔️","Evaluasi"),("🏆","Achievement")]
     for icon,label in pages:
@@ -1919,22 +1937,66 @@ elif st.session_state.halaman=="AI Tutor":
             if st.button(q,key=f"quick_{i}",use_container_width=True):
                 st.session_state["ai_input"]=q;st.rerun()
     with b:
+        if ambil_api_key():
+            st.success("🟢 NARA siap menerima pertanyaan dan meminta jawaban dari OpenAI + materi yang kamu punya.")
+        else:
+            st.warning("🟡 API key belum tersedia. NARA masih dapat mencoba menjawab dari materi yang tersimpan, tetapi untuk kemampuan AI penuh isi OPENAI_API_KEY di Secrets atau masukkan key di sidebar.")
         q=st.text_area("💭 Tulis pertanyaanmu",value=st.session_state.get("ai_input",""),height=120,placeholder="Contoh: Jelaskan struktur teks prosedur dengan bahasa sederhana...")
         c1,c2=st.columns(2)
         ask=c1.button("✨ Tanya NARA",use_container_width=True)
         if c2.button("🧹 Bersihkan",use_container_width=True):
             st.session_state["ai_input"]="";st.rerun()
         if ask and q.strip():
-            st.session_state.ai_questions+=1
-            award_xp(15,"AI Tutor")
-            context=buat_context_ai(q.strip())
-            answer,error=buat_jawaban_ai(q.strip(),context)
-            if not answer: answer=error or "Maaf, AI belum dapat memberikan jawaban."
-            st.session_state.riwayat_ai.append({"q":q.strip(),"a":answer})
-            st.session_state["ai_input"]="";badge_check()
-        for item in reversed(st.session_state.riwayat_ai[-6:]):
-            st.markdown(f'<div class="chat-user"><b>👤 Kamu</b><br>{item["q"]}</div>',unsafe_allow_html=True)
-            st.markdown(f'<div class="chat-ai"><b>🤖 NARA</b><br>{item["a"]}</div>',unsafe_allow_html=True)
+            pertanyaan = q.strip()
+            st.session_state.ai_questions += 1
+            award_xp(15, "AI Tutor")
+
+            # PERBAIKAN PENTING:
+            # cari materi relevan terlebih dahulu, lalu kirim hasilnya
+            # ke buat_context_ai(). Sebelumnya fungsi dipanggil tanpa
+            # argumen hasil sehingga AI gagal sebelum request dikirim.
+            hasil_relevan = cari_materi_relevan(
+                pertanyaan,
+                chunks_database,
+                jumlah=8
+            )
+            context = buat_context_ai(hasil_relevan)
+
+            answer, error = buat_jawaban_ai(
+                pertanyaan,
+                context
+            )
+
+            # Jika API belum dikonfigurasi atau sedang gagal, tetap berikan
+            # jawaban dari materi yang sudah diunggah agar aplikasi tidak
+            # hanya menampilkan pesan error.
+            if not answer:
+                answer = jawaban_dari_database(
+                    pertanyaan,
+                    hasil_relevan
+                )
+                if error:
+                    st.session_state["ai_last_error"] = error
+
+            st.session_state.riwayat_ai.append({
+                "q": pertanyaan,
+                "a": answer
+            })
+            st.session_state["ai_input"] = ""
+            badge_check()
+            st.rerun()
+
+        # Riwayat percakapan menggunakan komponen chat Streamlit agar
+        # jawaban Markdown dari AI tampil rapi dan mudah dibaca.
+        for item in st.session_state.riwayat_ai[-8:]:
+            with st.chat_message("user", avatar="👤"):
+                st.markdown(item["q"])
+            with st.chat_message("assistant", avatar="🤖"):
+                st.markdown(item["a"])
+
+        if st.session_state.get("ai_last_error"):
+            with st.expander("ℹ️ Detail koneksi AI", expanded=False):
+                st.caption(st.session_state["ai_last_error"])
 
 # ---------- ICE BREAKING ----------
 elif st.session_state.halaman=="Ice Breaking":
