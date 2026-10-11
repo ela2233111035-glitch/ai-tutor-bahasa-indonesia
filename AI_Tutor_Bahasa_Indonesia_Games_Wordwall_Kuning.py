@@ -325,6 +325,7 @@ for key, value in DEFAULT_STATE.items():
 # =========================================================
 
 MENU = [
+    "Panduan Penggunaan",
     "Beranda",
     "Profil Pelajar Pancasila",
     "CP dan ATP",
@@ -332,7 +333,6 @@ MENU = [
     "Ice Breaking",
     "Materi",
     "Games",
-    "Panduan Penggunaan",
     "LKPD",
     "Evaluasi"
 ]
@@ -1778,6 +1778,7 @@ with st.sidebar:
     st.session_state.kelas=st.text_input("🏫 Kelas",value=st.session_state.kelas,placeholder="Contoh: VIII A")
     st.markdown(f'<div class="card" style="padding:16px;margin:8px 0 18px"><div style="font-weight:900">{level_name}</div><div class="xpbar"><div class="xpfill" style="width:{pct}%"></div></div><div style="font-size:.78rem;color:#526078">{st.session_state.xp} XP</div></div>',unsafe_allow_html=True)
     pages=[
+        ("📖","Panduan Penggunaan"),
         ("🏠","Beranda"),
         ("🌱","Profil Pelajar Pancasila"),
         ("🗺️","CP dan ATP"),
@@ -1785,7 +1786,6 @@ with st.sidebar:
         ("🎉","Ice Breaking"),
         ("📚","Materi"),
         ("🎮","Games"),
-        ("📖","Panduan Penggunaan"),
         ("📝","LKPD"),
         ("⚔️","Evaluasi"),
         ("🏆","Achievement")
@@ -1817,7 +1817,7 @@ if st.session_state.halaman=="Beranda":
         if i<len(journey)-1:
             with cols[i*2+1]: st.markdown('<div class="arrow">➜</div>',unsafe_allow_html=True)
     st.markdown('<div class="section">🎯 Aktivitas Utama</div>',unsafe_allow_html=True)
-    features=[("🤖","AI Tutor","Tanyakan materi dan dapatkan penjelasan mudah.","AI Tutor"),("📚","Materi","Jelajahi materi Bahasa Indonesia.","Materi"),("🎮","Game Zone","Berlatih sambil mengumpulkan XP.","Games"),("📖","Panduan","Pelajari langkah penggunaan AI Tutor dari awal sampai evaluasi.","Panduan Penggunaan"),("📝","LKPD","Kerjakan misi belajar.","LKPD"),("⚔️","Challenge","Uji pemahamanmu seperti game.","Evaluasi"),("🌱","Profil Pancasila","Kembangkan karakter belajar.","Profil Pelajar Pancasila")]
+    features=[("📖","Panduan Penggunaan","Pelajari langkah penggunaan AI Tutor dari awal sampai evaluasi.","Panduan Penggunaan"),("🤖","AI Tutor","Tanyakan materi dan dapatkan penjelasan mudah.","AI Tutor"),("📚","Materi","Jelajahi materi Bahasa Indonesia.","Materi"),("🎮","Game Zone","Berlatih sambil mengumpulkan XP.","Games"),("📝","LKPD","Kerjakan misi belajar.","LKPD"),("⚔️","Challenge","Uji pemahamanmu seperti game.","Evaluasi"),("🌱","Profil Pancasila","Kembangkan karakter belajar.","Profil Pelajar Pancasila")]
     cols=st.columns(3)
     for i,(ico,title,desc,target) in enumerate(features):
         with cols[i%3]:
