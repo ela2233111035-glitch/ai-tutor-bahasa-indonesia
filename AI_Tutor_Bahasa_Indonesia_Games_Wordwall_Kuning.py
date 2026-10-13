@@ -35,7 +35,8 @@ FOLDER_DATABASE = "database"
 
 WORDWALL_URL = "https://wordwall.net/resource/120671874?wwmethod=link"
 
-LKPD_URL = "https://forms.gle/ZrQU4CSB46PJNT9Z6"
+LKPD_MANDIRI_URL = "https://forms.gle/ZrQU4CSB46PJNT9Z6"  # Link LKPD lama: tugas mandiri
+LKPD_KELOMPOK_URL = "https://forms.gle/DJ54iB7h75WXiJsu5"  # Link baru: tugas kelompok
 
 # Video Ice Breaking
 # URL video dapat diganti kapan saja tanpa mengubah bagian lain program.
@@ -332,6 +333,7 @@ MENU = [
     "AI Tutor",
     "Ice Breaking",
     "Materi",
+    "Rangkuman Materi",
     "Games",
     "LKPD",
     "Evaluasi"
@@ -1785,6 +1787,7 @@ with st.sidebar:
         ("🤖","AI Tutor"),
         ("🎉","Ice Breaking"),
         ("📚","Materi"),
+        ("🧠","Rangkuman Materi"),
         ("🎮","Games"),
         ("📝","LKPD"),
         ("⚔️","Evaluasi"),
@@ -2056,6 +2059,112 @@ elif st.session_state.halaman=="Materi":
                 st.session_state.materi_dibaca.append(selected);award_xp(10,"Materi");badge_check()
             st.success("Materi ditandai selesai! +10 XP")
 
+# ---------- RANGKUMAN MATERI ----------
+elif st.session_state.halaman=="Rangkuman Materi":
+    page_header(
+        "Rangkuman Materi",
+        "Ringkasan otomatis dari seluruh file materi TXT yang tersedia di folder database.",
+        "🧠"
+    )
+    st.markdown(
+        '<div class="feature"><div class="emoji">📚</div><h3>Rangkuman Semua Materi</h3>'
+        '<p>Rangkuman di bawah dibuat berdasarkan isi setiap file materi yang tersimpan di folder <b>database</b>. '
+        'Jika materi diperbarui, rangkuman akan mengikuti isi file terbaru.</p></div>',
+        unsafe_allow_html=True
+    )
+
+    def buat_rangkuman_materi(teks, maksimal=8):
+        """Membuat rangkuman ekstraktif berdasarkan kalimat penting dari materi."""
+        if not teks or not teks.strip():
+            return "Belum ada isi materi yang dapat dirangkum."
+
+        kalimat = [
+            k.strip()
+            for k in re.split(r"(?<=[.!?])\s+|\n+", teks)
+            if len(k.strip().split()) >= 5
+        ]
+        if not kalimat:
+            return teks.strip()[:1200]
+
+        kata_umum = {
+            "yang", "dan", "atau", "di", "ke", "dari", "pada", "dengan",
+            "untuk", "dalam", "adalah", "itu", "ini", "sebagai", "oleh",
+            "juga", "dapat", "akan", "agar", "karena", "maka", "serta",
+            "tersebut", "dalam", "sebuah", "suatu", "lebih", "dapat"
+        }
+        frekuensi = Counter(
+            kata for kata in re.findall(r"\b[a-zA-ZÀ-ÿ]{3,}\b", teks.lower())
+            if kata not in kata_umum
+        )
+        skor_kalimat = []
+        for urutan, kal in enumerate(kalimat):
+            kata_kalimat = [
+                kata for kata in re.findall(r"\b[a-zA-ZÀ-ÿ]{3,}\b", kal.lower())
+                if kata not in kata_umum
+            ]
+            skor = sum(frekuensi.get(kata, 0) for kata in kata_kalimat)
+            if kata_kalimat:
+                skor = skor / (len(kata_kalimat) ** 0.5)
+            # Prioritaskan kalimat awal secara ringan agar definisi/topik utama ikut terpilih.
+            skor += max(0, 1.5 - urutan * 0.03)
+            skor_kalimat.append((skor, urutan, kal))
+
+        terpilih = sorted(skor_kalimat, key=lambda x: x[0], reverse=True)[:maksimal]
+        terpilih = sorted(terpilih, key=lambda x: x[1])
+        hasil = []
+        seen = set()
+        for _, _, kal in terpilih:
+            kunci = re.sub(r"\W+", "", kal.lower())
+            if kunci not in seen:
+                seen.add(kunci)
+                hasil.append(kal)
+        return "\n\n".join(f"- {kal}" for kal in hasil)
+
+    materi_rangkuman = []
+    try:
+        nama_file_materi = sorted(
+            nama for nama in os.listdir(FOLDER_DATABASE)
+            if nama.lower().endswith(".txt")
+        )
+    except Exception:
+        nama_file_materi = []
+
+    for nama_file in nama_file_materi:
+        lokasi = os.path.join(FOLDER_DATABASE, nama_file)
+        try:
+            with open(lokasi, "r", encoding="utf-8-sig") as f:
+                isi_materi = f.read().strip()
+            if isi_materi:
+                materi_rangkuman.append((nama_file, isi_materi))
+        except Exception:
+            continue
+
+    if materi_rangkuman:
+        st.success(f"✅ Ditemukan {len(materi_rangkuman)} file materi untuk dirangkum.")
+        gabungan = "\n\n".join(isi for _, isi in materi_rangkuman)
+        with st.expander("📌 Rangkuman Gabungan Seluruh Materi", expanded=True):
+            st.markdown(buat_rangkuman_materi(gabungan, maksimal=14))
+        st.markdown('<div class="section">📖 Rangkuman Per Materi</div>', unsafe_allow_html=True)
+        for nomor, (nama_file, isi_materi) in enumerate(materi_rangkuman, start=1):
+            with st.expander(f"📘 {nomor}. {os.path.splitext(nama_file)[0]}", expanded=(nomor == 1)):
+                st.markdown(buat_rangkuman_materi(isi_materi, maksimal=8))
+    else:
+        st.warning(
+            "Folder database belum berisi file .txt yang dapat dibaca. "
+            "Tambahkan semua materi sebagai file TXT ke folder database di GitHub agar rangkuman lengkap tampil."
+        )
+        st.markdown("### Contoh rangkuman inti: Teks Prosedur")
+        st.markdown(
+            """
+            - **Pengertian:** Teks prosedur adalah teks yang menjelaskan cara atau tahapan untuk melakukan atau membuat sesuatu.
+            - **Tujuan:** Membantu pembaca melakukan kegiatan secara benar, runtut, dan aman.
+            - **Struktur umum:** Judul, tujuan, alat dan bahan (jika diperlukan), serta langkah-langkah.
+            - **Langkah-langkah:** Disusun secara sistematis dari tahap awal sampai akhir agar mudah diikuti.
+            - **Ciri kebahasaan:** Menggunakan kata kerja tindakan, kalimat perintah (imperatif), konjungsi temporal seperti *kemudian* dan *setelah itu*, serta keterangan cara atau waktu.
+            - **Hal yang perlu diperhatikan:** Gunakan bahasa yang jelas, urutan yang logis, dan informasi yang sesuai agar pembaca tidak salah melakukan langkah.
+            """
+        )
+
 # ---------- GAMES ----------
 elif st.session_state.halaman=="Games":
     page_header("PROCEDURE QUEST","Petualangan game Teks Prosedur — susun, tebak, analisis, dan taklukkan tantangan!","🎮")
@@ -2263,9 +2372,9 @@ elif st.session_state.halaman=="Panduan Penggunaan":
         ]),
         ("10", "📝 LKPD", [
             "Klik menu LKPD.",
-            "Kemudian, klik “Buka LKPD & Dapatkan XP”.",
-            "Maka akan muncul tampilan “Kerjakan Sekarang”.",
-            "Klik “Kerjakan Sekarang”.",
+            "Kemudian, klik tombol “Buka Link Tugas Kelompok”.",
+            "Formulir tugas kelompok akan terbuka di Google Form.",
+            "Kerjakan tugas bersama anggota kelompok dan kirim jawaban sesuai petunjuk guru.",
             "Setelah itu, pengguna akan diarahkan ke tampilan Google Form.",
             "Baca petunjuk pengerjaan.",
             "Baca setiap soal dengan teliti.",
@@ -2331,10 +2440,48 @@ elif st.session_state.halaman=="Panduan Penggunaan":
 
 # ---------- LKPD ----------
 elif st.session_state.halaman=="LKPD":
-    page_header("Learning Mission","Kerjakan LKPD sebagai bagian dari misi belajarmu.","📝")
-    st.markdown('<div class="feature"><div class="emoji">📝</div><h3>Mission: Complete Your LKPD</h3><p>Kerjakan tugas dengan teliti, lalu kembali untuk melanjutkan perjalananmu.</p></div>',unsafe_allow_html=True)
-    if st.button("🚀 Buka LKPD & Dapatkan XP",use_container_width=True):
-        award_xp(25,"LKPD");badge_check();st.link_button("📝 Kerjakan Sekarang",LKPD_URL,use_container_width=True)
+    page_header("LKPD — Tugas Mandiri & Kelompok","Pilih tugas sesuai arahan guru. Kedua tautan tersedia di sini.","📝")
+
+    st.markdown(
+        '<div class="feature"><div class="emoji">✍️</div><h3>LKPD: Tugas Mandiri</h3>'
+        '<p>Kerjakan secara individu. Bacalah setiap pertanyaan dengan teliti dan kirim jawaban melalui formulir.</p></div>',
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        '<div class="card" style="text-align:center;padding:24px">'
+        '<div style="font-size:2.7rem">📘</div><h3>Tugas Mandiri Bahasa Indonesia</h3>'
+        '<p>Gunakan tautan LKPD mandiri yang sudah tersedia sebelumnya.</p></div>',
+        unsafe_allow_html=True
+    )
+    st.link_button(
+        "✍️ BUKA LINK LKPD TUGAS MANDIRI",
+        LKPD_MANDIRI_URL,
+        use_container_width=True
+    )
+
+    st.markdown("---")
+
+    st.markdown(
+        '<div class="feature"><div class="emoji">👥</div><h3>LKPD: Tugas Kelompok</h3>'
+        '<p>Diskusikan materi bersama anggota kelompok, bagi tugas secara adil, lalu kirim jawaban melalui Google Form.</p></div>',
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        '<div class="card" style="text-align:center;padding:24px">'
+        '<div style="font-size:2.7rem">🤝</div><h3>Tugas Kelompok Bahasa Indonesia</h3>'
+        '<p>Tekan tombol di bawah untuk membuka formulir tugas kelompok.</p></div>',
+        unsafe_allow_html=True
+    )
+    st.link_button(
+        "👥 BUKA LINK LKPD TUGAS KELOMPOK",
+        LKPD_KELOMPOK_URL,
+        use_container_width=True
+    )
+    st.info("💡 Tugas mandiri dikerjakan sendiri, sedangkan tugas kelompok dikerjakan bersama anggota kelompok.")
+    if st.button("✅ Tandai LKPD Dibuka (+25 XP)", use_container_width=True):
+        award_xp(25, "LKPD")
+        badge_check()
+        st.success("XP berhasil ditambahkan. Semangat menyelesaikan LKPD!")
 
 # ---------- EVALUASI ----------
 elif st.session_state.halaman=="Evaluasi":
